@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0F5132">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="مساعد النادي">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>مساعد نادي العلوم والتكنولوجيا</title>
+<style>
+:root{--bg:#f5f7f6;--card:#fff;--text:#18352a;--muted:#6c7b74;--border:#e1e8e4;--green:#0F5132;--soft:#eaf5ef;--ubg:#0F5132;--utx:#fff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101a15;--card:#18261f;--text:#e4efe9;--muted:#93a69c;--border:#2a3d33;--green:#2fa56b;--soft:#1f3329;--ubg:#1f7a4f}}
+:root[data-theme="dark"]{--bg:#101a15;--card:#18261f;--text:#e4efe9;--muted:#93a69c;--border:#2a3d33;--green:#2fa56b;--soft:#1f3329;--ubg:#1f7a4f}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font-family:"Noto Sans Arabic",Tahoma,Arial,sans-serif;display:flex;flex-direction:column}
+header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 16px}
+h1{margin:0;font-size:18px}
+header p{margin:3px 0 0;color:var(--muted);font-size:12px}
+.modes{display:flex;gap:6px;overflow-x:auto;padding:10px 12px;background:var(--card);border-bottom:1px solid var(--border)}
+.modes button{flex:none;border:1px solid var(--border);background:transparent;color:var(--text);border-radius:20px;padding:7px 13px;font:inherit;font-size:13px;cursor:pointer}
+.modes button.on{background:var(--soft);color:var(--green);border-color:var(--green);font-weight:bold}
+#msgs{flex:1;overflow-y:auto;padding:16px 12px}
+.welcome{text-align:center;max-width:520px;margin:4vh auto;color:var(--muted);line-height:1.8}
+.welcome .ic{font-size:48px}
+.welcome h2{color:var(--text);margin:8px 0}
+.sug{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.sug button{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:11px;font:inherit;font-size:13px;cursor:pointer;text-align:right}
+.m{display:flex;margin:10px 0}
+.m.u{justify-content:flex-start}.m.a{justify-content:flex-end}
+.b{max-width:88%;padding:11px 14px;border-radius:16px;line-height:1.9;white-space:pre-wrap;word-wrap:break-word}
+.u .b{background:var(--ubg);color:var(--utx);border-top-right-radius:4px}
+.a .b{background:var(--card);border:1px solid var(--border);border-top-left-radius:4px}
+form{display:flex;gap:8px;padding:10px 12px;background:var(--card);border-top:1px solid var(--border)}
+textarea{flex:1;border:1px solid var(--border);border-radius:12px;padding:10px;font:inherit;resize:none;background:var(--bg);color:var(--text);outline:0;max-height:110px}
+#go{border:0;background:var(--green);color:#fff;border-radius:12px;padding:0 18px;font:inherit;font-weight:bold;cursor:pointer}
+#go:disabled{opacity:.5}
+.note{text-align:center;color:var(--muted);font-size:11px;padding:0 10px 8px;background:var(--card)}
+@media(max-width:480px){.sug{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><h1>🔬 مساعد نادي العلوم والتكنولوجيا</h1><p id="lbl">المساعد العام</p></header>
+<nav class="modes" id="modes"></nav>
+<main id="msgs"></main>
+<form id="f"><textarea id="in" rows="1" placeholder="اكتب سؤالك هنا..."></textarea><button id="go" type="submit">إرسال</button></form>
+<div class="note">المساعد تعليمي. نفّذ التجارب بإشراف شخص راشد.</div>
+<script>
+// ⚙️ ضع هنا رابط n8n (Production URL من عقدة Chat Trigger أو Webhook)
+const WEBHOOK_URL="https://ikhalihnna.app.n8n.cloud/webhook/45977fcb-94cb-40de-afa5-59fc2e022c00/chat";
+const SESSION=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random());
+const MODES={
+general:["🤖 عام","كن مساعدًا تعليميًا متعدد المجالات."],
+science:["🧪 العلوم","ركز على العلوم والفيزياء والكيمياء وعلوم الحياة والأرض."],
+math:["➗ الرياضيات","ركز على الحساب الذهني والعمليات والمسائل والتفكير المنطقي."],
+scratch:["💻 Scratch","اشرح اللبنات والمشروعات البرمجية خطوة بخطوة."],
+robotics:["🦾 LEGO Spike","ركز على LEGO Spike والحساسات والمحركات والتركيب والبرمجة."],
+lab:["🧫 المختبر","اقترح تجارب آمنة: الهدف، الأدوات، الخطوات، الملاحظة، الاستنتاج."]};
+const SUG=["اشرح لي لماذا تطفو بعض الأجسام فوق الماء؟","أعطني مسألة حساب ذهني لعمر 10 سنوات","علمني أول مشروع بسيط في Scratch","كيف يعمل حساس المسافة في LEGO Spike؟"];
+const $=id=>document.getElementById(id);
+let mode="general",hist=[],sample=null,busy=false;
+
+function welcome(){
+ $("msgs").innerHTML=`<div class="welcome"><div class="ic">🤖</div><h2>مرحبًا! أنا مساعد النادي</h2><p>اختر مجالًا أو اكتب سؤالك مباشرة.</p><div class="sug">${SUG.map(s=>`<button type="button" data-p="${s}">${s}</button>`).join("")}</div></div>`;
+}
+function add(role,text){
+ const w=document.createElement("div");w.className="m "+role;
+ const b=document.createElement("div");b.className="b";b.textContent=text;
+ w.appendChild(b);$("msgs").appendChild(w);$("msgs").scrollTop=1e9;return b;
+}
+$("modes").innerHTML=Object.entries(MODES).map(([k,v])=>`<button type="button" data-m="${k}" class="${k===mode?"on":""}">${v[0]}</button>`).join("")+`<button type="button" data-m="new">➕ جديدة</button>`;
+$("modes").onclick=e=>{
+ const k=e.target.dataset.m;if(!k)return;
+ if(k==="new"){hist=[];welcome();return}
+ mode=k;$("lbl").textContent=MODES[k][0];
+ document.querySelectorAll("[data-m]").forEach(x=>x.classList.toggle("on",x.dataset.m===k));
+};
+$("msgs").onclick=e=>{const p=e.target.dataset.p;if(p)ask(p)};
+
+async function ask(text){
+ text=text.trim();if(!text||busy)return;
+ if(!hist.length)$("msgs").innerHTML="";
+ add("u",text);hist.push({role:"user",content:text});
+ $("in").value="";busy=true;$("go").disabled=true;
+ const b=add("a","🔎 أفكر…");
+ try{
+  if(!WEBHOOK_URL.startsWith("http"))throw new Error("لم يُضبط رابط n8n في الصفحة بعد.");
+  const prefix=mode==="general"?"":"[المجال: "+MODES[mode][0]+"] ";
+  const r=await fetch(WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"sendMessage",sessionId:SESSION,chatInput:prefix+text})});
+  if(!r.ok)throw new Error("تعذر الاتصال بالمساعد ("+r.status+").");
+  const raw=await r.text();let d;try{d=JSON.parse(raw)}catch(_){d=raw}
+  if(Array.isArray(d))d=d[0];
+  const reply=typeof d==="string"?d:(d&&(d.output||d.text||d.reply||d.message||d.response));
+  if(!reply)throw new Error("وصل رد غير متوقع من n8n.");
+  b.textContent=reply;hist.push({role:"assistant",content:reply});
+ }catch(err){b.textContent="⚠️ "+err.message;hist.pop();}
+ finally{busy=false;$("go").disabled=false;$("in").focus()}
+}
+$("f").onsubmit=e=>{e.preventDefault();ask($("in").value)};
+$("in").onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("f").requestSubmit()}};
+welcome();
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+</script>
+</body>
+</html>
